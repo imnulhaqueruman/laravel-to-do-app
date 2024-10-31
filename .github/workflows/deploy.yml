@@ -62,6 +62,7 @@ jobs:
               restart: unless-stopped
           EOL
 
+      
       # Deploy to EC2
       - name: Deploy to EC2
         run: |
@@ -70,22 +71,34 @@ jobs:
           
           # Deploy on server
           ssh ubuntu@laravel-server << 'ENDSSH'
+            # Add current user to docker group if not already added
+            sudo usermod -aG docker $USER
+            
+            # Install Docker Compose if not installed
+            if ! command -v docker-compose &> /dev/null; then
+              sudo apt-get update
+              sudo apt-get install -y docker-compose
+            fi
+            
+            # Set correct permissions
+            sudo chown $USER:docker docker-compose.yml
+            
             # Stop existing containers
-            docker-compose down || true
+            sudo docker-compose down || true
             
             # Pull latest image
-            docker-compose pull
+            sudo docker-compose pull
             
             # Start new containers
-            docker-compose up -d
+            sudo docker-compose up -d
             
             # Run migrations
-            docker-compose exec -T app php artisan migrate --force
+            sudo docker-compose exec -T app php artisan migrate --force
             
             # Clear cache
-            docker-compose exec -T app php artisan cache:clear
-            docker-compose exec -T app php artisan config:clear
-            docker-compose exec -T app php artisan view:clear
+            sudo docker-compose exec -T app php artisan cache:clear
+            sudo docker-compose exec -T app php artisan config:clear
+            sudo docker-compose exec -T app php artisan view:clear
           ENDSSH
 
       # Verify deployment
