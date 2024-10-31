@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  DOCKER_IMAGE: poridhi/laravel:v4.1
+  DOCKER_IMAGE: poridhi/laravel:v4.3
 
   LARAVEL_HOST: 15.168.189.90  # Your Laravel instance IP
 
