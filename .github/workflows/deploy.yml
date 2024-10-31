@@ -38,9 +38,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.DOCKER_IMAGE }}:latest
-            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
-
+            ${{ env.DOCKER_IMAGE }}
+          
       # Create docker-compose.yml
       - name: Create docker-compose.yml
         run: |
