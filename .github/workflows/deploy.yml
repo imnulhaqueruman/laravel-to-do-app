@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  DOCKER_IMAGE: poridhi/laravel:v4.0
+  DOCKER_IMAGE: poridhi/laravel:v4.1
 
   LARAVEL_HOST: 15.168.189.90  # Your Laravel instance IP
 
@@ -44,11 +44,11 @@ jobs:
       - name: Create docker-compose.yml
         run: |
           cat > docker-compose.yml << 'EOL'
-          version: '3.8'
+          version: '3.3'
           
           services:
             app:
-              image: ${{ env.DOCKER_IMAGE }}:latest
+              image: ${{ env.DOCKER_IMAGE }}
               ports:
                 - "8000:8000"
               environment:
