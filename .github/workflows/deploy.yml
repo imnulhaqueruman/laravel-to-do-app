@@ -1,0 +1,108 @@
+name: Deploy Laravel Application
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOCKER_IMAGE: poridhi/laravel:v4.0
+
+  LARAVEL_HOST: 15.168.189.90  # Your Laravel instance IP
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      # Setup SSH key
+      - name: Install SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/laravel_private_key.pem
+          chmod 600 ~/.ssh/laravel_private_key.pem
+          echo -e "Host laravel-server\n\tHostName ${{ env.LARAVEL_HOST }}\n\tUser ubuntu\n\tIdentityFile ~/.ssh/laravel_private_key.pem\n\tStrictHostKeyChecking no" > ~/.ssh/config
+
+      # Build and push Docker image
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+
+      # Create docker-compose.yml
+      - name: Create docker-compose.yml
+        run: |
+          cat > docker-compose.yml << 'EOL'
+          version: '3.8'
+          
+          services:
+            app:
+              image: ${{ env.DOCKER_IMAGE }}:latest
+              ports:
+                - "8000:8000"
+              environment:
+                - APP_ENV=production
+                - DB_CONNECTION=mysql
+                - DB_HOST=${{ secrets.MYSQL_HOST }}
+                - DB_PORT=3306
+                - DB_DATABASE=poridhi
+                - DB_USERNAME=poridhi
+                - DB_PASSWORD=Poridhi@123456
+              restart: unless-stopped
+          EOL
+
+      # Deploy to EC2
+      - name: Deploy to EC2
+        run: |
+          # Copy docker-compose.yml to server
+          scp docker-compose.yml ubuntu@laravel-server:~/
+          
+          # Deploy on server
+          ssh ubuntu@laravel-server << 'ENDSSH'
+            # Stop existing containers
+            docker-compose down || true
+            
+            # Pull latest image
+            docker-compose pull
+            
+            # Start new containers
+            docker-compose up -d
+            
+            # Run migrations
+            docker-compose exec -T app php artisan migrate --force
+            
+            # Clear cache
+            docker-compose exec -T app php artisan cache:clear
+            docker-compose exec -T app php artisan config:clear
+            docker-compose exec -T app php artisan view:clear
+          ENDSSH
+
+      # Verify deployment
+      - name: Verify deployment
+        run: |
+          # Wait for application to start
+          sleep 30
+          
+          # Check if application is responding
+          curl -s -o /dev/null -w "%{http_code}" http://${{ env.LARAVEL_HOST }}:8000/
+
+      # Notify on success/failure
+      - name: Notify on success
+        if: success()
+        run: echo "Deployment successful!"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Deployment failed!"
