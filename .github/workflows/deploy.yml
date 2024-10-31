@@ -9,7 +9,7 @@ on:
 env:
   DOCKER_IMAGE: poridhi/laravel:v4.3
 
-  LARAVEL_HOST: 15.168.189.90  # Your Laravel instance IP
+  LARAVEL_HOST: 13.208.42.43  # Your Laravel instance IP
 
 jobs:
   build-and-deploy:
